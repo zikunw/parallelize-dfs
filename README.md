@@ -1,6 +1,8 @@
 # P-DFS
 
-Research:
+My attempt to parallize recursive dfs.
+
+Source:
 1. Example of DFS for knapsack question: 
     - https://stackoverflow.com/questions/71291203/using-iterative-deepening-dfs-for-knapsack-similar-problem
 2. Stackover flow question where people suggests cython/numba or rewrite in c
