@@ -1,28 +1,43 @@
 from knapsack import Knapsack, KnapConfig
+import random
 import time
 import multiprocessing
+from enum import Enum
+
+class ProcessStatus(Enum):
+    UNINIT = 0
+    RUNNING = 1
+    WAITING = 2
 
 def run(idx, q, best_val, best_arr, lock, processes_status, process_status_lock, processes_queue):
     print(f"Process {idx} started.")
+    process_status_lock.acquire()
+    processes_status[idx] = ProcessStatus.WAITING.value # finish and waiting for input
+    process_status_lock.release()
+    
     while True:
         msg = q.get(block=True)
         i, sum_val, sum_weight, limit_weight, arr, items = msg
         DFS(i, sum_val, sum_weight, limit_weight, arr, items, best_val, best_arr, lock, processes_status, process_status_lock, processes_queue)
-        #print(f"Process {idx} finished.")
+        
         process_status_lock.acquire()
-        processes_status[idx] = False # finish and waiting for input
+        processes_status[idx] = ProcessStatus.WAITING.value # finish and waiting for input
         process_status_lock.release()
             
 def manager_run(processes_status, process_status_lock):
     while True:
         process_status_lock.acquire()
-        if all(processes_status) == False:
-            process_status_lock.release()
-            print(f"All tasks finished.")
+        stopped = True
+        for i in range(len(processes_status)):
+            if processes_status[i] != ProcessStatus.WAITING.value:
+                stopped = False
+                break
+        if stopped:
+            print("All processes finished.")
             break
         process_status_lock.release()
         
-        time.sleep(0.1) 
+        time.sleep(0.01) 
 
 def DFS(idx, sum_val, sum_weight, limit_weight, arr, items, best_val, best_arr, lock, processes_status, process_status_lock, processes_queue):
     if idx == len(items):
@@ -41,7 +56,7 @@ def DFS(idx, sum_val, sum_weight, limit_weight, arr, items, best_val, best_arr, 
             process_status_lock.acquire()
             idle_process_idx = -1
             for j in range(len(processes_status)):
-                if processes_status[j] == False:
+                if processes_status[j] == ProcessStatus.WAITING.value:
                     idle_process_idx = j
                     break
             if idle_process_idx != -1:
@@ -53,7 +68,7 @@ def DFS(idx, sum_val, sum_weight, limit_weight, arr, items, best_val, best_arr, 
                     arr+[items[i].id], 
                     items
                 ))
-                processes_status[idle_process_idx] = True
+                processes_status[idle_process_idx] = ProcessStatus.RUNNING.value
                 process_status_lock.release()
                 continue
             process_status_lock.release()
@@ -96,6 +111,9 @@ def single_DFS(idx, sum_val, sum_weight, limit_weight, arr, items):
     return max_val, max_arr
 
 def main():
+    random_seed = 4
+    random.seed(random_seed)
+    
     # Create a knapsack problem
     config = KnapConfig(
         num=40,
@@ -122,8 +140,8 @@ def main():
     best_arr = multiprocessing.Array('i', len(knapsack_obj[5])) # length of items (this is the maximum length of arr)
     lock = multiprocessing.Lock()
     
-    num_process = 5
-    processes_status = multiprocessing.Array('b', num_process) # True: running, False: waiting for input
+    num_process = 2
+    processes_status = multiprocessing.Array('i', num_process) # Status of processes
     process_status_lock = multiprocessing.Lock()
     processes = []
     processes_queue = []
@@ -132,13 +150,13 @@ def main():
         processes_queue.append(q)
         p = multiprocessing.Process(target=run, args=(i, q, best_val, best_arr, lock, processes_status, process_status_lock, processes_queue))
         processes.append(p)
-        processes_status[i] = False # True: running, False: waiting for input
+        processes_status[i] = ProcessStatus.UNINIT.value
     
     for p in processes:
         p.start()
     
     # init for the first process
-    processes_status[0] = True
+    processes_status[0] = ProcessStatus.RUNNING.value
     processes_queue[0].put(knapsack_obj)
     
     # init a manager process
@@ -148,6 +166,7 @@ def main():
     
     manager_process.join()
     parallelize_time = time.time() - start
+    
     print(f"Parallelize: best_val: {best_val.value}, best_arr: {best_arr[:]}")
     print(f"Parallelize time: {parallelize_time}")
     
