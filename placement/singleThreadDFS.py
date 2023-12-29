@@ -1,8 +1,10 @@
 import copy
 from dfsUtil import *
 
-
 def OuterDFS(ops, curPlace, plans):
+    
+    #print("OuterDFS: ops = ", [op.name for op in ops], "curPlace = ", curPlace)
+    
     if len(ops) == 0:
         plans.append(copy.deepcopy(curPlace))
         return
@@ -15,6 +17,10 @@ def OuterDFS(ops, curPlace, plans):
     ops.append(currentOP)
 
 def InnerDFS(op, ops, leftTasks, curPlace, nodeList, plans):
+    
+    #print("InnerDFS: op = ", op.name, "leftTasks = ", leftTasks, "curPlace = ", curPlace, "nodeList = ", nodeList)
+    
+    # Terminating condition
     if leftTasks <= 0:
         # update curPlace
         curPlace.append(strNodeList(nodeList))
@@ -28,6 +34,7 @@ def InnerDFS(op, ops, leftTasks, curPlace, nodeList, plans):
 
     upperBound = min(3, leftTasks)
     for i in range(upperBound):
+        
         taskPlaced = i+1
         # update nodeList
         nodeList.append(op.name + str(taskPlaced))
