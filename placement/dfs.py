@@ -42,7 +42,7 @@ def runSingle(ops):
     return plans, end-start
 
 # ======== multi thread dfs ========
-def run(idx, plans, plans_lock, processes_status, process_status_lock, processes_queue):
+def run(idx, ops, plans, plans_lock, processes_status, process_status_lock, processes_queue):
     message_queue = processes_queue[idx]
     print(f"Process {idx} started.")
     process_status_lock.acquire()
@@ -51,13 +51,13 @@ def run(idx, plans, plans_lock, processes_status, process_status_lock, processes
     
     while True:
         msg = message_queue.get(block=True)
-        ops, curPlace = msg # For now, only one message type (for outer dfs)
+        ops_index, curPlace = msg # For now, only one message type (for outer dfs)
         
         with process_status_lock:
             processes_status[idx] = ProcessStatus.RUNNING.value
             
         print(f"Process {idx} received msg.")
-        MultiOuterDFS(ops, curPlace, plans, plans_lock, processes_status, process_status_lock, processes_queue)
+        MultiOuterDFS(ops, ops_index, curPlace, plans, plans_lock, processes_status, process_status_lock, processes_queue)
         print(f"Process {idx} finished.")
         
         with process_status_lock:
@@ -84,7 +84,6 @@ def runMulti(ops, num_processes=4):
         # final results
         plans_lock = manager.Lock()
         plans = manager.list()
-        
         process_status_lock = manager.Lock()
         processes_status = manager.Array('i', range(num_processes))
         processes = []
@@ -92,12 +91,13 @@ def runMulti(ops, num_processes=4):
         for idx in range(num_processes):
             processes_queue.append(manager.Queue())
             processes.append(mp.Process(target=run, args=(
-                idx,
-                plans,
-                plans_lock,
-                processes_status,
-                process_status_lock,
-                processes_queue
+                    idx,
+                    ops,
+                    plans,
+                    plans_lock,
+                    processes_status,
+                    process_status_lock,
+                    processes_queue
                 )))
             processes_status[idx] = ProcessStatus.UNINIT.value
             
@@ -122,7 +122,7 @@ def runMulti(ops, num_processes=4):
         
         # init for the first process
         processes_status[0] = ProcessStatus.RUNNING.value
-        processes_queue[0].put((ops, []))
+        processes_queue[0].put((0, [])) # (ops_index, curPlace)
         
         # init a manager process
         # once all processes are finished, the manager process will be finished
@@ -146,17 +146,20 @@ if __name__ == "__main__":
     ops.append(OP("map", 8))
     ops.append(OP("filter", 8))
     ops.append(OP("sink", 2))
+    # ops.append(OP("source", 2))
+    # ops.append(OP("map", 4))
+    # ops.append(OP("sink", 2))
     
     singleplans, singletime = runSingle(ops)
     multiplans, multitime = runMulti(ops, 4)
         
     # ======== compare results ========
     print("Compare results: ", compareResult(singleplans, multiplans))
-    if not compareResult(singleplans, multiplans):
-        for i in range(len(singleplans)):
-            print("i = ", i)
-            print("Single: ", singleplans[i])
-            print("Multi: ", multiplans[i])
+    # if not compareResult(singleplans, multiplans):
+    #     for i in range(len(singleplans)):
+    #         print("i = ", i)
+    #         print("Single: ", singleplans[i])
+    #         print("Multi: ", multiplans[i])
     print("Single size: ", len(singleplans))
     print("Multi size:  ", len(multiplans))
     print("Single time: ", singletime)
