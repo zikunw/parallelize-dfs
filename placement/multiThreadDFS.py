@@ -2,20 +2,19 @@ import copy
 from dfsUtil import *
 from dfs import ProcessStatus
 
-def MultiOuterDFS(ops, ops_index, curPlace, plans, plans_lock, processes_status, process_status_lock, processes_queue):
+def MultiOuterDFS(ops, ops_index, curPlace, plans_queue, processes_status, process_status_lock, processes_queue):
     
     #print("OuterDFS: ops = ", [op.name for op in ops], "curPlace = ", curPlace)
     
     if len(ops) == ops_index:
-        with plans_lock:
-            plans.append(copy.deepcopy(curPlace))
+        plans_queue.put(copy.deepcopy(curPlace))
         return
 
     currentOP = ops[-ops_index] #ops.pop()
     nodeList = []  # record temp placement for the current op
-    MultiInnerDFS(currentOP, ops, ops_index+1, currentOP.parallelim, curPlace, nodeList, plans, plans_lock, processes_status, process_status_lock, processes_queue)
+    MultiInnerDFS(currentOP, ops, ops_index+1, currentOP.parallelim, curPlace, nodeList, plans_queue, processes_status, process_status_lock, processes_queue)
 
-def MultiInnerDFS(op, ops, ops_index, leftTasks, curPlace, nodeList, plans, plans_lock, processes_status, process_status_lock, processes_queue):
+def MultiInnerDFS(op, ops, ops_index, leftTasks, curPlace, nodeList, plans_queue, processes_status, process_status_lock, processes_queue):
     
     #print("InnerDFS: op = ", op.name, "leftTasks = ", leftTasks, "curPlace = ", curPlace, "nodeList = ", nodeList)
     
@@ -39,11 +38,11 @@ def MultiInnerDFS(op, ops, ops_index, leftTasks, curPlace, nodeList, plans, plan
                     return
         
         # explore next op
-        MultiOuterDFS(ops, ops_index, curPlace + [strNodeList(nodeList)], plans, plans_lock, processes_status, process_status_lock, processes_queue)
+        MultiOuterDFS(ops, ops_index, curPlace + [strNodeList(nodeList)], plans_queue, processes_status, process_status_lock, processes_queue)
         return
 
     upperBound = min(3, leftTasks)
     
     for i in range(upperBound):
         taskPlaced = i+1
-        MultiInnerDFS(op, ops, ops_index, leftTasks-taskPlaced, curPlace, nodeList + [op.name + str(taskPlaced)], plans, plans_lock,  processes_status, process_status_lock, processes_queue)
+        MultiInnerDFS(op, ops, ops_index, leftTasks-taskPlaced, curPlace, nodeList + [op.name + str(taskPlaced)], plans_queue, processes_status, process_status_lock, processes_queue)

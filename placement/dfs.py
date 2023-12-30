@@ -42,12 +42,12 @@ def runSingle(ops):
     return plans, end-start
 
 # ======== multi thread dfs ========
-def run(idx, ops, plans, plans_lock, processes_status, process_status_lock, processes_queue):
+def run(idx, ops, plans_queue, processes_status, process_status_lock, processes_queue):
     message_queue = processes_queue[idx]
     print(f"Process {idx} started.")
-    process_status_lock.acquire()
-    processes_status[idx] = ProcessStatus.WAITING.value # finish and waiting for input
-    process_status_lock.release()
+    # finish and waiting for input
+    with process_status_lock:
+        processes_status[idx] = ProcessStatus.WAITING.value 
     
     while True:
         msg = message_queue.get(block=True)
@@ -57,7 +57,7 @@ def run(idx, ops, plans, plans_lock, processes_status, process_status_lock, proc
             processes_status[idx] = ProcessStatus.RUNNING.value
             
         print(f"Process {idx} received msg.")
-        MultiOuterDFS(ops, ops_index, curPlace, plans, plans_lock, processes_status, process_status_lock, processes_queue)
+        MultiOuterDFS(ops, ops_index, curPlace, plans_queue, processes_status, process_status_lock, processes_queue)
         print(f"Process {idx} finished.")
         
         with process_status_lock:
@@ -83,7 +83,8 @@ def runMulti(ops, num_processes=4):
         start = time.time()
         # final results
         plans_lock = manager.Lock()
-        plans = manager.list()
+        #plans = manager.list()
+        plans_queue = manager.Queue()
         process_status_lock = manager.Lock()
         processes_status = manager.Array('i', range(num_processes))
         processes = []
@@ -93,8 +94,7 @@ def runMulti(ops, num_processes=4):
             processes.append(mp.Process(target=run, args=(
                     idx,
                     ops,
-                    plans,
-                    plans_lock,
+                    plans_queue,
                     processes_status,
                     process_status_lock,
                     processes_queue
@@ -130,6 +130,10 @@ def runMulti(ops, num_processes=4):
         manager_process.start()
         
         manager_process.join()
+        
+        plans = []
+        while not plans_queue.empty():
+            plans.append(plans_queue.get())
         
         # kill all processes
         for p in processes:
