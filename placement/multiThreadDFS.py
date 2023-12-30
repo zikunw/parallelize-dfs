@@ -8,6 +8,7 @@ def MultiOuterDFS(ops, ops_index, curPlace, plans_queue, processes_status, proce
     
     if len(ops) == ops_index:
         plans_queue.put(copy.deepcopy(curPlace))
+        #print("Put", curPlace)
         return
 
     currentOP = ops[-ops_index] #ops.pop()

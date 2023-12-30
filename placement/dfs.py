@@ -64,7 +64,7 @@ def run(idx, ops, plans_queue, processes_status, process_status_lock, processes_
             if processes_status[idx] == ProcessStatus.RUNNING.value:
                 processes_status[idx] = ProcessStatus.WAITING.value
         
-def manager_run(processes_status, process_status_lock):
+def manager_run(processes_status, process_status_lock, plans_queue):
     while True:
         with process_status_lock:
             stopped = True
@@ -73,9 +73,9 @@ def manager_run(processes_status, process_status_lock):
                     stopped = False
                     break
             if stopped:
+                plans_queue.put("STOP")
                 print("All processes finished.")
-                break
-        
+                return
         time.sleep(0.01)
 
 def runMulti(ops, num_processes=4):
@@ -126,14 +126,21 @@ def runMulti(ops, num_processes=4):
         
         # init a manager process
         # once all processes are finished, the manager process will be finished
-        manager_process = mp.Process(target=manager_run, args=(processes_status, process_status_lock))
+        manager_process = mp.Process(target=manager_run, args=(processes_status, process_status_lock, plans_queue))
         manager_process.start()
         
-        manager_process.join()
+        #manager_run(processes_status, process_status_lock)
         
         plans = []
-        while not plans_queue.empty():
-            plans.append(plans_queue.get())
+        while True: #not plans_queue.empty():
+            plan = plans_queue.get()
+            if plan == "STOP":
+                break
+            plans.append(plan)
+            
+        print("All plans collected.")
+        
+        manager_process.join()
         
         # kill all processes
         for p in processes:
