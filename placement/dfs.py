@@ -15,6 +15,7 @@ class ProcessStatus(Enum):
 def compareResult(result1, result2):
     result1 = sorted(result1)
     result2 = sorted(result2)
+    
     if len(result1) != len(result2):
         return False
     
@@ -141,8 +142,9 @@ def runMulti(ops, num_processes=4):
 if __name__ == "__main__":
     # dfs operator stack
     ops = []
-    ops.append(OP("source", 2))
-    ops.append(OP("map", 4))
+    ops.append(OP("source", 4))
+    ops.append(OP("map", 8))
+    ops.append(OP("filter", 8))
     ops.append(OP("sink", 2))
     
     singleplans, singletime = runSingle(ops)
@@ -155,8 +157,10 @@ if __name__ == "__main__":
             print("i = ", i)
             print("Single: ", singleplans[i])
             print("Multi: ", multiplans[i])
+    print("Single size: ", len(singleplans))
+    print("Multi size:  ", len(multiplans))
     print("Single time: ", singletime)
-    print("Multi time: ", multitime)
+    print("Multi time:  ", multitime)
 
     
 
