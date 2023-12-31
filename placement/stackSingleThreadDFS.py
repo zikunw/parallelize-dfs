@@ -1,45 +1,40 @@
 import copy
 from dfsUtil import *
+from enum import Enum
+import time
 
-def stackSingleOuterDFS(ops, curPlace, plans):
+class searchType(Enum):
+    Outer = 0
+    Inner = 1
+
+def stackDFS(ops):
     
-    #print("OuterDFS: ops = ", [op.name for op in ops], "curPlace = ", curPlace)
+    start = time.time()
     
-    if len(ops) == 0:
-        plans.append(copy.deepcopy(curPlace))
-        return
-
-    currentOP = ops.pop()
-    nodeList = []  # record temp placement for the current op
+    plans = []
+    searchSpace = []
+    searchSpace.append((searchType.Outer, (0, []))) # (, (ops_index, curPlace)) 
     
-    stackSingleInnerDFS(currentOP, ops, currentOP.parallelim, curPlace, nodeList, plans)
-
-    ops.append(currentOP)
-
-def stackSingleInnerDFS(op, ops, leftTasks, curPlace, nodeList, plans):
+    while searchSpace != []:
+        type, nextSearch = searchSpace.pop()
+        if type == searchType.Outer:
+            ops_index, curPlace = nextSearch
+            if len(ops) == ops_index:
+                plans.append(curPlace)
+                continue
+            currentOP = ops[-ops_index]
+            nodeList = []  # record temp placement for the current op
+            searchSpace.append((searchType.Inner, (currentOP, ops, ops_index+1, currentOP.parallelim, curPlace, nodeList)))
+        elif type == searchType.Inner:
+            op, ops, ops_index, leftTasks, curPlace, nodeList = nextSearch
+            if leftTasks <= 0:
+                searchSpace.append((searchType.Outer, (ops_index, [strNodeList(nodeList)] + curPlace)))
+                continue
+            upperBound = min(3, leftTasks)
+            for i in range(upperBound):
+                taskPlaced = i+1
+                searchSpace.append((searchType.Inner, (op, ops, ops_index, leftTasks-taskPlaced, curPlace, nodeList + [op.name + str(taskPlaced)])))
+        else:
+            raise Exception("Unknown search type: " + str(type))
     
-    #print("InnerDFS: op = ", op.name, "leftTasks = ", leftTasks, "curPlace = ", curPlace, "nodeList = ", nodeList)
-    
-    # Terminating condition
-    if leftTasks <= 0:
-        # update curPlace
-        curPlace.append(strNodeList(nodeList))
-
-        # explore next op
-        stackSingleOuterDFS(ops, curPlace, plans)
-
-        # backtrace curPlace
-        curPlace.pop()
-        return
-
-    upperBound = min(3, leftTasks)
-    for i in range(upperBound):
-        
-        taskPlaced = i+1
-        # update nodeList
-        nodeList.append(op.name + str(taskPlaced))
-
-        stackSingleInnerDFS(op, ops, leftTasks-taskPlaced, curPlace, nodeList, plans)
-
-        # backtrace nodeList
-        nodeList.pop()
+    return plans, time.time()-start
