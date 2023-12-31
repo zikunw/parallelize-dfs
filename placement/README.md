@@ -168,3 +168,43 @@ Multi size:   91854
 Single time:  0.33064699172973633
 Multi time:   4.16757607460022
 ```
+
+### Iteration 7: Changing the result queue into individual manager lists.
+
+Now every process will join to their own list, all the lists will be merged when everything is finished:
+```python
+plans = [manager.list() for i in range(num_processes)]
+#...
+total_plans = []
+for p in plans:
+	total_plans += list(p)
+#...
+```
+
+Result:
+```
+Single size:  91854
+Multi size:   91854
+Single time:  0.330765962600708
+Multi time:   3.8883252143859863
+```
+
+### Iteration 8: Changing result aggregation by using local temporary files
+
+Apparently if each process save their results to a temporary local file and load all of them back is much faster compare to using shared memory. Now the multiprocess implementation is officially faster than the single threaded version.
+
+Setup (4 workers):
+
+```
+ops.append(OP("source", 4))
+ops.append(OP("map", 10))
+ops.append(OP("filter", 8))
+ops.append(OP("sink", 4))
+```
+
+```
+Single size:  1087506
+Multi size:   1087506
+Single time:  4.04739785194397
+Multi time:   1.5408880710601807
+```

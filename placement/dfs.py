@@ -156,19 +156,19 @@ def runMulti(ops, num_processes=4):
 if __name__ == "__main__":
     # dfs operator stack
     ops = []
-    # ops.append(OP("source", 4))
-    # ops.append(OP("map", 10))
-    # ops.append(OP("filter", 8))
-    # ops.append(OP("sink", 4))
+    ops.append(OP("source", 4))
+    ops.append(OP("map", 10))
+    ops.append(OP("filter", 8))
+    ops.append(OP("sink", 4))
     
     # ops.append(OP("source", 2))
     # ops.append(OP("map", 4))
     # ops.append(OP("sink", 2))
     
-    ops.append(OP("source", 12))
-    ops.append(OP("map", 8))
-    ops.append(OP("sink", 6))
-    ops.append(OP("good", 4))
+    # ops.append(OP("source", 12))
+    # ops.append(OP("map", 8))
+    # ops.append(OP("sink", 6))
+    # ops.append(OP("good", 4))
     
     singleplans, singletime = runSingle(ops)
     multiplans, multitime = runMulti(ops, 4)
