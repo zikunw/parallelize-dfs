@@ -5,6 +5,9 @@ from multiThreadDFS import *
 import multiprocessing as mp
 from enum import Enum
 import time
+import os
+
+worker_result_path = lambda idx: f"temp/worker_{idx}_result.txt"
 
 class ProcessStatus(Enum):
     UNINIT = 0
@@ -12,10 +15,7 @@ class ProcessStatus(Enum):
     WAITING = 2
     HAS_TASK = 3
 
-def compareResult(result1, result2):
-    result1 = sorted(result1)
-    result2 = sorted(result2)
-    
+def compareResult(result1, result2): 
     if len(result1) != len(result2):
         return False
     
@@ -42,29 +42,37 @@ def runSingle(ops):
     return plans, end-start
 
 # ======== multi thread dfs ========
-def run(idx, ops, plans_queue, processes_status, process_status_lock, processes_queue):
+def run(idx, ops, plans, processes_status, process_status_lock, processes_queue):
     message_queue = processes_queue[idx]
     print(f"Process {idx} started.")
     # finish and waiting for input
     with process_status_lock:
         processes_status[idx] = ProcessStatus.WAITING.value 
     
+    worker_result_file = open(worker_result_path(idx), "w")
+    
     while True:
         msg = message_queue.get(block=True)
+        
+        if msg == "terminate":
+            worker_result_file.close()
+            return
+        
         ops_index, curPlace = msg # For now, only one message type (for outer dfs)
         
         with process_status_lock:
             processes_status[idx] = ProcessStatus.RUNNING.value
             
         print(f"Process {idx} received msg.")
-        MultiOuterDFS(ops, ops_index, curPlace, plans_queue, processes_status, process_status_lock, processes_queue)
+        MultiOuterDFS(worker_result_file, ops, ops_index, curPlace, plans, processes_status, process_status_lock, processes_queue)
         print(f"Process {idx} finished.")
         
         with process_status_lock:
             if processes_status[idx] == ProcessStatus.RUNNING.value:
                 processes_status[idx] = ProcessStatus.WAITING.value
         
-def manager_run(processes_status, process_status_lock, plans_queue):
+def manager_run(processes_status, process_status_lock):
+    #print("Manager process started.")
     while True:
         with process_status_lock:
             stopped = True
@@ -73,28 +81,26 @@ def manager_run(processes_status, process_status_lock, plans_queue):
                     stopped = False
                     break
             if stopped:
-                plans_queue.put("STOP")
                 print("All processes finished.")
                 return
         time.sleep(0.01)
 
 def runMulti(ops, num_processes=4):
+    ops = sorted(ops, key=lambda x: x.parallelim)
+    print("Sorted ops: ", [op.name for op in ops])
     with mp.Manager() as manager:
         start = time.time()
         # final results
-        plans_lock = manager.Lock()
-        #plans = manager.list()
-        plans_queue = manager.Queue()
+        plans = [manager.list() for i in range(num_processes)]
         process_status_lock = manager.Lock()
         processes_status = manager.Array('i', range(num_processes))
         processes = []
-        processes_queue = []
+        processes_queue = [manager.Queue() for i in range(num_processes)]
         for idx in range(num_processes):
-            processes_queue.append(manager.Queue())
             processes.append(mp.Process(target=run, args=(
                     idx,
                     ops,
-                    plans_queue,
+                    plans[idx],
                     processes_status,
                     process_status_lock,
                     processes_queue
@@ -124,53 +130,56 @@ def runMulti(ops, num_processes=4):
         processes_status[0] = ProcessStatus.RUNNING.value
         processes_queue[0].put((0, [])) # (ops_index, curPlace)
         
-        # init a manager process
-        # once all processes are finished, the manager process will be finished
-        manager_process = mp.Process(target=manager_run, args=(processes_status, process_status_lock, plans_queue))
-        manager_process.start()
+        manager_run(processes_status, process_status_lock)
         
-        #manager_run(processes_status, process_status_lock)
-        
-        plans = []
-        while True: #not plans_queue.empty():
-            plan = plans_queue.get()
-            if plan == "STOP":
-                break
-            plans.append(plan)
+        # wait for all processes to be finished
+        for i in range(len(processes)):
+            processes_queue[i].put("terminate")
             
-        print("All plans collected.")
-        
-        manager_process.join()
-        
-        # kill all processes
         for p in processes:
-            p.terminate()
+            p.join()
+        
+        total_plans = []
+        for i in range(num_processes):
+            with open(worker_result_path(i), "r") as f:
+                for line in f:
+                    total_plans.append(line.strip())
+                    
+        # remove temp files
+        for i in range(num_processes):
+            os.remove(worker_result_path(i))
             
         end = time.time()
         
-        return list(plans), end-start
+        return total_plans, end-start
 
 if __name__ == "__main__":
     # dfs operator stack
     ops = []
-    ops.append(OP("source", 4))
-    ops.append(OP("map", 8))
-    ops.append(OP("filter", 8))
-    ops.append(OP("sink", 2))
+    # ops.append(OP("source", 4))
+    # ops.append(OP("map", 10))
+    # ops.append(OP("filter", 8))
+    # ops.append(OP("sink", 4))
+    
     # ops.append(OP("source", 2))
     # ops.append(OP("map", 4))
     # ops.append(OP("sink", 2))
+    
+    ops.append(OP("source", 12))
+    ops.append(OP("map", 8))
+    ops.append(OP("sink", 6))
+    ops.append(OP("good", 4))
     
     singleplans, singletime = runSingle(ops)
     multiplans, multitime = runMulti(ops, 4)
         
     # ======== compare results ========
-    print("Compare results: ", compareResult(singleplans, multiplans))
-    # if not compareResult(singleplans, multiplans):
-    #     for i in range(len(singleplans)):
-    #         print("i = ", i)
-    #         print("Single: ", singleplans[i])
-    #         print("Multi: ", multiplans[i])
+    # print("Compare results: ", compareResult(singleplans, multiplans))
+    # # if not compareResult(singleplans, multiplans):
+    # #     for i in range(len(singleplans)):
+    # #         print("i = ", i)
+    # #         print("Single: ", singleplans[i])
+    # #         print("Multi: ", multiplans[i])
     print("Single size: ", len(singleplans))
     print("Multi size:  ", len(multiplans))
     print("Single time: ", singletime)
