@@ -37,22 +37,25 @@ def runSingle(ops):
 if __name__ == "__main__":
     # dfs operator stack
     ops = []
-    # ops.append(OP("source", 4))
-    # ops.append(OP("map", 10))
-    # ops.append(OP("filter", 8))
-    # ops.append(OP("sink", 4))
+    ops.append(OP("source", 4))
+    ops.append(OP("map", 10))
+    ops.append(OP("filter", 8))
+    ops.append(OP("sink", 4))
     
     # ops.append(OP("source", 2))
     # ops.append(OP("map", 4))
     # ops.append(OP("sink", 2))
     
-    ops.append(OP("source", 12))
-    ops.append(OP("map", 8))
-    ops.append(OP("sink", 6))
-    ops.append(OP("good", 4))
+    # ops.append(OP("source", 12))
+    # ops.append(OP("map", 8))
+    # ops.append(OP("sink", 6))
+    # ops.append(OP("good", 4))
     
-    multiplans, multitime = runMulti(ops, 4)
+    # multiplans, multitime = runMulti(ops, 4)
     singleplans, singletime = runSingle(ops)
+    
+    # for plan in singleplans:
+    #     print(" ".join(plan))
     
     # stackSinglePlans, stackSingleTime = stackDFS(ops)
         
@@ -64,10 +67,10 @@ if __name__ == "__main__":
     # #         print("Single: ", singleplans[i])
     # #         print("Multi: ", multiplans[i])
     print("Single size: ", len(singleplans))
-    print("Multi size:  ", len(multiplans))
+    # print("Multi size:  ", len(multiplans))
     # print("StackSingle size: ", len(stackSinglePlans))
     print("Single time: ", singletime)
-    print("Multi time:  ", multitime)
+    # print("Multi time:  ", multitime)
     # print("StackSingle time: ", stackSingleTime)
 
     

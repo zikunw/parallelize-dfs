@@ -4,13 +4,16 @@ import multiThreadDFS as multiDFS
 
 if __name__ == "__main__":
     
+    ops_plan = []
+    ops_plan.append(OP("source", 4))
+    ops_plan.append(OP("map1", 12))
+    ops_plan.append(OP("map2", 6))
+    ops_plan.append(OP("sink", 4))
+    
+    
     ########################## Multi DFS ##########################
 
-    ops = []
-    ops.append(OP("source", 4))
-    ops.append(OP("map", 12))
-    ops.append(OP("sink", 6))
-    ops.append(OP("good", 4))
+    ops = ops_plan.copy()
 
     plans = []
     curPlace = []
@@ -38,10 +41,14 @@ if __name__ == "__main__":
     # Start the main process loop
     pool.start()
     end = time.time()
+    
+    # Terminate all processes
+    #pool.pool.terminate()
 
     # Multi DFS runtime
     multiRuntime = end-start
     print("Multi runtime:", multiRuntime)
+    print("Total plans:", len(pool.plans))
 
     # Structure to validate the results
     multiSet = set()
@@ -49,14 +56,9 @@ if __name__ == "__main__":
         key = planToString(pool.plans[i])
         multiSet.add(key)
 
-
     ########################## Single DFS ##########################
     
-    ops = []
-    ops.append(OP("source", 4))
-    ops.append(OP("map", 12))
-    ops.append(OP("sink", 6))
-    ops.append(OP("good", 4))
+    ops = ops_plan.copy()
 
     plans = []
     curPlace = []
@@ -71,6 +73,7 @@ if __name__ == "__main__":
     # Single DFS runtime
     singleRuntime = end-start
     print("Single runtime:", singleRuntime)
+    print("Total plans:", len(plans))
 
     # Structure to validate the results
     singleSet = set()
